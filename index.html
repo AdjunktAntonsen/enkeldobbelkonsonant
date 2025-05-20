@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enkel eller dobbel konsonant?</title>
+  <style>
+    :root { --bg: #f0f4f8; --card-bg: #ffffff; --text-primary: #1a1a1a; --text-secondary: #34495e; --accent: #009688; --success: #27ae60; --error: #e74c3c; --warning: #f39c12; --hint-color: var(--accent); --radius: 8px; --transition: 0.3s ease; --font-base: "Segoe UI", Roboto, sans-serif; }
+    * { box-sizing: border-box; transition: var(--transition); }
+    body { margin: 0; padding: 2rem; background: var(--bg); font-family: var(--font-base); color: var(--text-secondary); display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 600px; background: var(--card-bg); border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 2rem; position: relative; }
+    h1 { font-size: 1.75rem; margin-bottom:1rem; color: var(--text-primary); text-align:center; cursor: default; }
+    h1.pulse { animation: pulse 1s infinite; cursor: pointer; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    #controls { display: flex; gap:0.5rem; margin-bottom:1rem; }
+    #speakBtn, #actionBtn { background: var(--accent); border:none; color:white; padding:0.75rem; font-size:1rem; cursor:pointer; border-radius:var(--radius); flex-shrink:0; }
+    #speakBtn:hover, #actionBtn:hover { opacity:0.9; transform:translateY(-2px); }
+    #answer { flex:1; padding:0.75rem; font-size:1rem; border:2px solid #ccc; border-radius:var(--radius); }
+    #answer:focus { border-color:var(--accent); outline:none; box-shadow:0 0 0 3px rgba(0,150,136,0.2); }
+    #hint-title { margin-top:1.5rem; font-size:1rem; font-weight:bold; color:var(--text-primary); }
+    #hint { margin:0.25rem 0 1rem; font-size:1.25rem; color:var(--hint-color); }
+    #status { min-height:1.5em; font-size:1rem; color:var(--text-primary); text-align:center; }
+    #name-entry { display:none; margin:1rem 0; text-align:center; }
+    #name-entry input { padding:0.5rem; font-size:1rem; border-radius:var(--radius); border:1px solid #ccc; }
+    #name-entry button { padding:0.5rem 1rem; margin-left:0.5rem; background: var(--warning); color:white; border:none; border-radius:var(--radius); cursor:pointer; }
+    #scoreboard { background:var(--card-bg); padding:1rem; margin:1.5rem 0; border-radius:var(--radius); text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    #scoreboard h2 { margin:0; font-size:1.25rem; color:var(--text-primary); }
+    #bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    #timer-container, #highscore-container { background:var(--card-bg); padding:1rem; border-radius:var(--radius); box-shadow:0 2px 8px rgba(0,0,0,0.05); text-align:center; }
+    #timer-container h2, #highscore-container h2 { margin:0 0 0.5rem; font-size:1rem; color:var(--text-primary); }
+    #timer { font-size:1.5rem; color:var(--accent); margin:0; }
+    #highscore-list { list-style:none; padding:0; margin:0; font-size:0.95rem; }
+    #highscore-list li { margin:0.25rem 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="title">Enkel eller dobbel konsonant? Skriv ordet!</h1>
+    <div id="controls">
+      <button id="speakBtn" title="Les opp ordet">🔊</button>
+      <input type="text" id="answer" placeholder="Skriv ordet her" disabled />
+      <button id="actionBtn">Start</button>
+    </div>
+    <div id="hint-title">Hint!</div>
+    <div id="hint">--</div>
+    <div id="status"></div>
+    <div id="name-entry">
+      <input type="text" id="nameInput" placeholder="Ditt navn" />
+      <button id="submitName">Send inn</button>
+    </div>
+    <div id="scoreboard">
+      <h2>Elev: <span id="student-score">0</span> &nbsp;|&nbsp; DigitalElla: <span id="digital-score">0</span></h2>
+    </div>
+    <div id="bottom-row">
+      <div id="timer-container">
+        <h2>Timer</h2>
+        <p id="timer">05:00</p>
+      </div>
+      <div id="highscore-container">
+        <h2>HighScore!</h2>
+        <ul id="highscore-list"></ul>
+      </div>
+    </div>
+  </div>
+  <script>
+    let availableVoices = [];
+    speechSynthesis.onvoiceschanged = () => { availableVoices = speechSynthesis.getVoices(); };
+    const wordPairs = [
+      ['mat','matt'], ['fin','finn'], ['pen','penn'], ['ale','alle'],
+      ['par','parr'], ['ton','tonn'], ['pal','pall'], ['rol','roll'],
+      ['tak','takk'], ['lek','legg'], ['han','hann'], ['lam','lamm'],
+      ['ta','tatt'], ['min','minn'], ['sin','sinn'], ['hop','hopp'],
+      ['stop','stopp'], ['bok','bokk'], ['kul','kull'], ['bus','buss'],
+      ['pil','pill'], ['bid','bidd'], ['hak','hakk'], ['tap','tapp'],
+      ['ris','riss'], ['mer','merr'], ['bar','barr'], ['tar','tarr'],
+      ['sag','sagg'], ['rap','rapp'], ['kob','kobb'], ['dig','diger'],
+      ['dyr','dyr r'], ['bol','boll'], ['duk','dukk'], ['len','lenn'],
+      ['lek','lekk'], ['digg','digger']
+    ];
+    const additionalWords = [
+      'sol','måne','tre','fugl','sti','hus','bil','drøm','sky',
+      'stjerne','bok','dag','fisk','mor','far','barn','leke','hage','jord',
+      'time','sko','bokstav','lys','vind','mamma','pappa','boller','katter','ball',
+      'suppe','buss','natt','tann','koffert','sommer','hytte','fjell','bunn','tass',
+      'lille','kommer','vill','kapp','kledd','skjell','himmel','teller','slipp','skummelt'
+    ];
+    const entries = [...wordPairs.map(p => p[1]), ...additionalWords];
+    let currentAnswer = '';
+    let studentScore = 0;
+    let digitalScore = 0;
+    let timeLeft = 300;
+    let timerInterval;
+    let highscores = [
+      {name:'Ola',score:100},
+      {name:'Kari',score:90},
+      {name:'Per',score:80},
+      {name:'Anne',score:70},
+      {name:'Nils',score:25}
+    ];
+    const initialHall = highscores.slice();
+    const speakBtn = document.getElementById('speakBtn');
+    const answerInput = document.getElementById('answer');
+    const actionBtn = document.getElementById('actionBtn');
+    const hintEl = document.getElementById('hint');
+    const statusEl = document.getElementById('status');
+    const studentScoreEl = document.getElementById('student-score');
+    const digitalScoreEl = document.getElementById('digital-score');
+    const timerEl = document.getElementById('timer');
+    const highscoreListEl = document.getElementById('highscore-list');
+    const titleEl = document.getElementById('title');
+    const nameEntryEl = document.getElementById('name-entry');
+    const nameInput = document.getElementById('nameInput');
+    const submitNameBtn = document.getElementById('submitName');
+    function startGame() {
+      studentScore = 0;
+      digitalScore = 0;
+      studentScoreEl.textContent = 0;
+      digitalScoreEl.textContent = 0;
+      timeLeft = 300;
+      timerEl.textContent = formatTime(timeLeft);
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 1000);
+      answerInput.disabled = false;
+      actionBtn.textContent = 'Sjekk';
+      nameEntryEl.style.display = 'none';
+      statusEl.textContent = '';
+      highscores = initialHall.slice();
+      renderHighscores();
+      nextWord();
+      titleEl.classList.remove('pulse');
+      titleEl.style.cursor = 'default';
+    }
+    function formatTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    function updateTimer() {
+      if (--timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+      timerEl.textContent = formatTime(timeLeft);
+    }
+    function nextWord() {
+      statusEl.textContent = '';
+      currentAnswer = entries[Math.floor(Math.random() * entries.length)];
+      hintEl.textContent = `${currentAnswer.length} bokstaver`;
+      answerInput.value = '';
+      answerInput.disabled = false;
+      answerInput.focus();
+      playWord();
+    }
+    function playWord() {
+      if (!currentAnswer) return;
+      const utter = new SpeechSynthesisUtterance(currentAnswer);
+      const voices = availableVoices.length ? availableVoices : speechSynthesis.getVoices();
+      const norwegianVoices = voices.filter(v => v.lang.startsWith('nb'));
+      const female = norwegianVoices.find(v => /Hedda|Astrid|Nora/.test(v.name))
+                     || norwegianVoices.find(v => v.name.includes('Microsoft'))
+                     || norwegianVoices[0];
+      if (female) {
+        utter.voice = female;
+        utter.lang = female.lang;
+      } else {
+        utter.lang = 'nb-NO';
+      }
+      utter.rate = 0.9;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utter);
+    }
+    function checkAnswer() {
+      const ans = answerInput.value.trim().toLowerCase();
+      if (ans === currentAnswer.toLowerCase()) {
+        studentScore++;
+        studentScoreEl.textContent = studentScore;
+        statusEl.textContent = 'Riktig 🎉';
+      } else {
+        digitalScore++;
+        digitalScoreEl.textContent = digitalScore;
+        statusEl.textContent = `Feil. Riktig: ${currentAnswer}`;
+      }
+      setTimeout(() => { if (timeLeft > 0) nextWord(); }, 1000);
+    }
+    function endGame() {
+      answerInput.disabled = true;
+      actionBtn.disabled = true;
+      statusEl.textContent = 'Godt jobba!';
+      titleEl.classList.add('pulse');
+      titleEl.style.cursor = 'pointer';
+      titleEl.addEventListener('click', startGame, { once: true });
+      if (studentScore > highscores[highscores.length - 1].score) {
+        nameEntryEl.style.display = 'block';
+        nameInput.focus();
+      }
+    }
+    submitNameBtn.addEventListener('click', () => {
+      const nm = nameInput.value.trim() || 'Elev';
+      highscores.pop();
+      highscores.push({ name: nm, score: studentScore });
+      highscores.sort((a, b) => b.score - a.score);
+      renderHighscores();
+      nameEntryEl.style.display = 'none';
+    });
+    function renderHighscores() {
+      highscoreListEl.innerHTML = '';
+      highscores.slice(0, 5).forEach((h, i) => {
+        const li = document.createElement('li');
+        li.textContent = `${i + 1}. ${h.name}: ${h.score}`;
+        highscoreListEl.appendChild(li);
+      });
+    }
+    actionBtn.addEventListener('click', () => { if (actionBtn.textContent === 'Start') startGame(); });
+    speakBtn.addEventListener('click', playWord);
+    answerInput.addEventListener('keydown', e => { if (e.key === 'Enter' && actionBtn.textContent === 'Sjekk') checkAnswer(); });
+    // Initialize
+    renderHighscores();
+  </script>
+</body>
+</html>
