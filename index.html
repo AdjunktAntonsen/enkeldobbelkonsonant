@@ -215,7 +215,7 @@
       ['pil','pill'], ['bid','bidd'], ['hak','hakk'], ['tap','tapp'],
       ['ris','riss'], ['mer','merr'], ['bar','barr'], ['tar','tarr'],
       ['sag','sagg'], ['rap','rapp'], ['kob','kobb'], ['dig','diger'],
-      ['dyr','dyr r'], ['bol','boll'], ['duk','dukk'], ['len','lenn'],
+      ['dyr','dyrr'], ['bol','boll'], ['duk','dukk'], ['len','lenn'],
       ['lek','lekk'], ['digg','digger']
     ];
     const additionalWords = [
@@ -304,7 +304,7 @@
       if (!currentAnswer) return;
       const utter = new SpeechSynthesisUtterance(currentAnswer);
       utter.lang = 'nb-NO';
-      utter.rate = 0.9;
+      utter.rate = 0.75;
       speechSynthesis.cancel();
       speechSynthesis.speak(utter);
     }
@@ -335,7 +335,7 @@
         wrong.onend = () => {
           const spelled = currentAnswer.toUpperCase().split('').join(' ');
           const spellU = new SpeechSynthesisUtterance(spelled);
-          spellU.lang = 'nb-NO'; spellU.rate = 0.9;
+          spellU.lang = 'nb-NO'; spellU.rate = 0.6;
           spellU.onend = () => setTimeout(() => { if (timeLeft > 0) nextWord(); }, 500);
           speechSynthesis.speak(spellU);
         };
